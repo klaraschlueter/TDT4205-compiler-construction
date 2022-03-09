@@ -1,0 +1,10 @@
+# ignore C compilation output binaries
+*.o
+
+# ignore the generated compiler
+*/src/vslc
+
+# ignore generated code from yacc and lex
+*/src/scanner.c
+*/src/parser.c
+*/src/y.tab.h
