@@ -3,9 +3,14 @@
 #include <stdlib.h>
 #include <stdarg.h>
 #include <stdio.h>
+
+typedef struct stem_t *stem;
+struct stem_t { const char *str; stem next; };
+
 static void node_print ( node_t *root, int nesting );
 static void node_finalize ( node_t *discard );
 static void destroy_subtree ( node_t *discard );
+static void tree_print ( node_t *root, stem head );
 
 node_t *root;
 
@@ -20,7 +25,55 @@ destroy_syntax_tree ( void )
 void
 print_syntax_tree ( void )
 {
-    node_print ( root, 0 );
+    if (root == NULL) {
+        printf ("Printing empty tree.");
+        return;
+    }
+    tree_print ( root, 0 );
+}
+
+static void
+tree_print(node_t* root, stem head) 
+{
+    if (root == NULL) {
+        printf("tree_print got passed a node that is NULL!");
+    }
+    static const char *sdown = "  │", *slast = "  └", *snone = "   ";
+    struct stem_t col = {0, 0}, *tail;
+
+    for (tail = head; tail; tail = tail->next) {
+        if (!tail->next) {
+            if (!strcmp(sdown, tail->str))
+                printf("  ├");
+            else 
+                printf("%s", tail->str);
+            break;
+        }
+        printf("%s", tail->str);
+    }
+    
+    printf("──%s", node_string[root->type] );
+    if ( root->type == IDENTIFIER_DATA ||
+         root->type == STRING_DATA ||
+         root->type == EXPRESSION ) 
+        printf("(%s)", (char *) root->data);
+    else if (root->type == NUMBER_DATA)
+        printf("(%ld)", *((int64_t *)root->data));
+    putchar('\n');
+ 
+    if (!root->n_children) return;
+ 
+    if (tail && tail->str == slast)
+        tail->str = snone;
+ 
+    if (!tail)  tail = head = &col;
+    else        tail->next = &col;
+
+    for ( int64_t i=0; i < root->n_children; i++ ) {
+        col.str = root->n_children - i - 1 ? sdown : slast;
+        tree_print(root->children[i], head);
+    }
+    tail->next = 0;
 }
 
 
