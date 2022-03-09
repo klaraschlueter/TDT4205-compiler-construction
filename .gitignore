@@ -1,3 +1,6 @@
+# Ignore vscode settings and project files
+*/.vscode/*
+
 # ignore C compilation output binaries
 *.o
 
