@@ -11,10 +11,12 @@ COMMENT \/\/[^\n]+
 NAME [A-Za-z][A-Za-z0-9]*
 NUMBER [1-9][0-9]*
 %%
-<INITIAL>{WHITESPACE}+ { /* Eliminate whitespace */ }
-{COMMENT}                                                { /* Eliminate comments */ }
-{NUMBER}                                                 { return NUMBER; }
-.                                       { return yytext[0]; }
+<INITIAL>{WHITESPACE}+  { /* Eliminate whitespace */ }
+{COMMENT}               { /* Eliminate comments */ }
+{NUMBER}                { return NUMBER; }
+var                     { return VAR; }
+{NAME}                  { return IDENTIFIER; }
+.                       { return yytext[0]; }
 %%
 /* func                                    { BEGIN(EXP_FUNC); }
 <EXP_FUNC>{NAME}                        { BEGIN(FUNC); return FUNC_NAME; }
