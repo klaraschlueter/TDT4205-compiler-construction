@@ -2,27 +2,38 @@
 #include <vslc.h>
 %}
 
-%start expression
-
 %token FUNC PRINT RETURN CONTINUE IF THEN ELSE WHILE DO OPENBLOCK CLOSEBLOCK
 %token VAR NUMBER IDENTIFIER STRING
 
 %%
-number : NUMBER {    
-    int64_t *value = malloc ( sizeof(int64_t) );
-    *value = strtol ( yytext, NULL, 10 );
-    
-    node_init($$ = (node_t*)malloc(sizeof(node_t)), NUMBER_DATA, value, 0);
-//  root = $$;  
+expression_list
+: expression {
+    node_init($$ = (node_t*)malloc(sizeof(node_t)), EXPRESSION_LIST, NULL, 1, $1);
+    root = $$;
 }
-    ;
-expression : NUMBER '+' NUMBER {
+| expression_list ',' expression {
+    node_init($$ = (node_t*)malloc(sizeof(node_t)), EXPRESSION_LIST, NULL, 2, $1, $3);
+    root = $$;
+}
+;
+
+expression 
+: number '+' number {
     char *value = (char*)malloc ( 1 );
     *value = '+';
-    node_init($$ = (node_t*)malloc(sizeof(node_t)), EXPRESSION, value, 2, $1, $2);
-    root = $$;
-    
-    };
+    node_init($$ = (node_t*)malloc(sizeof(node_t)), EXPRESSION, value, 2, $1, $3);
+  }
+;
+
+number 
+: NUMBER {    
+    int64_t *value = malloc ( sizeof(int64_t) );
+    *value = strtol ( yytext, NULL, 10 );
+    printf("number found %ld\n", *value);
+    node_init($$ = (node_t*)malloc(sizeof(node_t)), NUMBER_DATA, value, 0);
+  }
+;
+
     
     // add a list construct
 
