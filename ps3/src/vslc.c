@@ -23,7 +23,20 @@ main ( int argc, char **argv )
 {
     options ( argc, argv );
 
-    yyparse();  // Generated from grammar/bison, constructs syntax tree
+    uint64_t* value = (uint64_t*) malloc(sizeof(uint64_t));
+    *value = 1;
+    node_t *child = malloc(sizeof(node_t));
+    node_init ( child, NUMBER_DATA, value, 1, 0 );
+    node_t *not_root = malloc(sizeof(node_t));
+    node_init ( not_root, EXPRESSION_LIST, NULL, 1, child );
+    root = malloc(sizeof(node_t));
+    node_init ( root, EXPRESSION_LIST, NULL, 1, not_root );
+
+    print_syntax_tree();
+    simplify_syntax_tree ();
+    print_syntax_tree();
+
+    /*yyparse();  // Generated from grammar/bison, constructs syntax tree
 
     if ( print_full_tree )
         print_syntax_tree ();
@@ -32,6 +45,7 @@ main ( int argc, char **argv )
         print_syntax_tree ();
 
     destroy_syntax_tree ();     // In tree.c
+    */
 }
 
 

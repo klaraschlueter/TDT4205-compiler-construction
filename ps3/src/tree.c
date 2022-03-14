@@ -2,6 +2,7 @@
 
 static void node_print ( node_t *root, int nesting );
 static void simplify_tree ( node_t **simplified, node_t *root );
+static node_t* prune_children ( node_t **root );
 static void node_finalize ( node_t *discard );
 
 typedef struct stem_t *stem;
@@ -24,7 +25,11 @@ destroy_syntax_tree ( void )
 void
 simplify_syntax_tree ( void )
 {
-    simplify_tree ( &root, root );
+    printf("Did we get here?");
+    //simplify_tree ( &root, root );
+    root = prune_children (&root);
+
+    // TODO: clean up here. Get pointers under control.
 }
 
 
@@ -185,4 +190,23 @@ simplify_tree ( node_t **simplified, node_t *root )
         node_finalize(root);
     */
 
+}
+
+static node_t*
+prune_children( node_t **root )
+{
+    // prune if number of children is one and contained data is null
+    if ((*root)->n_children == 1 && (*root)->data == NULL) {
+        root = &(*root)->children[0];
+        // TODO: remove the dangling thing
+
+
+        return prune_children(&root);
+    }
+
+    //recursively call for all children
+    for (uint64_t i = 0; i < (*root)->n_children; i++) {
+        (*root)->children[i] = prune_children(&(*root)->children[i]);
+    }
+    return *root;
 }
