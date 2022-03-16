@@ -1,9 +1,9 @@
 #include <vslc.h>
-
+#include <assert.h>
 static void node_print ( node_t *root, int nesting );
 static void simplify_tree ( node_t **simplified, node_t *root );
-static node_t* prune_children ( node_t **root );
 static void node_finalize ( node_t *discard );
+static void prune_children ( node_t **root );
 
 typedef struct stem_t *stem;
 struct stem_t { const char *str; stem next; };
@@ -25,13 +25,24 @@ destroy_syntax_tree ( void )
 void
 simplify_syntax_tree ( void )
 {
-    printf("Did we get here?");
-    //simplify_tree ( &root, root );
-    root = prune_children (&root);
-
-    // TODO: clean up here. Get pointers under control.
+    printf("\nroot address before: %p\n", root);
+    simplify_tree ( &root, root );
+    printf("\nroot address after: %p\n", root);
 }
 
+
+static void print_node(node_t node) 
+{
+    printf("%s(%p){children=%ld}[", node_string[node.type], node.data, node.n_children);
+    for (uint64_t i = 0; i < node.n_children; i++)
+    {
+        printf("%p", node.children[i]);
+        if (i+1 < node.n_children)
+            printf(", ");
+        
+    }
+    printf("]\n");
+}
 
 extern bool new_print_style;
 void
@@ -137,8 +148,16 @@ node_finalize ( node_t *discard )
 {
     if ( discard != NULL )
     {
+        discard->type = 0;
+        discard->n_children = 0;
+        
+        printf("freeing data %p\n", discard->data );
         free ( discard->data );
+        
+        printf("freeing children %p\n", discard->children );
         free ( discard->children );
+        
+        printf("freeing node %p\n", discard );
         free ( discard );
     }
 }
@@ -151,6 +170,7 @@ destroy_subtree ( node_t *discard )
     {
         for ( uint64_t i=0; i<discard->n_children; i++ )
             destroy_subtree ( discard->children[i] );
+        printf("Destroying %p\n", discard);
         node_finalize ( discard );
     }
 }
@@ -189,24 +209,30 @@ simplify_tree ( node_t **simplified, node_t *root )
         simplified = &root->children[0];
         node_finalize(root);
     */
-
+    prune_children (&root);
+    *simplified = root;         // make data of simplified (node_t*) be root
 }
 
-static node_t*
-prune_children( node_t **root )
+
+static void
+prune_children( node_t **node )
 {
-    // prune if number of children is one and contained data is null
-    if ((*root)->n_children == 1 && (*root)->data == NULL) {
-        root = &(*root)->children[0];
-        // TODO: remove the dangling thing
-
-
-        return prune_children(&root);
+    if ((*node)->n_children == 1 && (*node)->data == NULL)
+    {
+        node_t* child = (*node)->children[0];
+        printf("PRUNING: %s -> %s\n", node_string[(*node)->type], node_string[child->type]);
+        node_finalize(*node);
+        *node = child;
+        prune_children(node);
+    } 
+    else 
+    {
+        for (uint64_t i = 0; i < (*node)->n_children; i++)
+        {
+            node_t** child = &(*node)->children[i];
+            if (*child != NULL)
+                prune_children(child);
+        }
     }
-
-    //recursively call for all children
-    for (uint64_t i = 0; i < (*root)->n_children; i++) {
-        (*root)->children[i] = prune_children(&(*root)->children[i]);
-    }
-    return *root;
 }
+
