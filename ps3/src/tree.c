@@ -4,6 +4,8 @@ static void node_print ( node_t *root, int nesting );
 static void simplify_tree ( node_t **simplified, node_t *root );
 static void node_finalize ( node_t *discard );
 static void prune_children ( node_t **root );
+static void resolve_constant_expressions(node_t **root);
+static void flatten(node_t **root);
 
 typedef struct stem_t *stem;
 struct stem_t { const char *str; stem next; };
@@ -151,13 +153,13 @@ node_finalize ( node_t *discard )
         discard->type = 0;
         discard->n_children = 0;
         
-        printf("freeing data %p\n", discard->data );
+        // printf("freeing data %p\n", discard->data );
         free ( discard->data );
         
-        printf("freeing children %p\n", discard->children );
+        // printf("freeing children %p\n", discard->children );
         free ( discard->children );
         
-        printf("freeing node %p\n", discard );
+        // printf("freeing node %p\n", discard );
         free ( discard );
     }
 }
@@ -170,7 +172,7 @@ destroy_subtree ( node_t *discard )
     {
         for ( uint64_t i=0; i<discard->n_children; i++ )
             destroy_subtree ( discard->children[i] );
-        printf("Destroying %p\n", discard);
+        // printf("Destroying %p\n", discard);
         node_finalize ( discard );
     }
 }
@@ -210,6 +212,8 @@ simplify_tree ( node_t **simplified, node_t *root )
         node_finalize(root);
     */
     prune_children (&root);
+    resolve_constant_expressions(&root);
+    flatten(&root);
     *simplified = root;         // make data of simplified (node_t*) be root
 }
 
@@ -217,6 +221,8 @@ simplify_tree ( node_t **simplified, node_t *root )
 static void
 prune_children( node_t **node )
 {
+    if (*node == NULL)
+        return;
     if ((*node)->n_children == 1 && (*node)->data == NULL)
     {
         node_t* child = (*node)->children[0];
@@ -236,3 +242,64 @@ prune_children( node_t **node )
     }
 }
 
+static void resolve_constant_expressions(node_t **node)
+{
+    if (*node == NULL)
+        return;
+    for (uint64_t i = 0; i < (*node)->n_children; i++)
+        resolve_constant_expressions(&(*node)->children[i]);
+
+    if ((*node)->type == EXPRESSION)
+    {
+        if ((*node)->n_children == 1) 
+        {
+            node_t* child_a = (*node)->children[0];
+            if(child_a->type == NUMBER_DATA)
+            {
+                int64_t* value = (int64_t*)malloc(sizeof(int64_t));
+                int64_t a = *(int64_t*)(child_a->data);
+                switch (*(char*)(*node)->data)
+                {
+                case '-': *value =  -a; break;
+                case '~': *value =  ~a; break;
+                default:
+                    printf("DEFAULT should not be reached!");
+                    break;
+                }
+                node_finalize(child_a);
+                node_finalize(*node);
+                *node = (node_t*)malloc(sizeof(node_t));
+                node_init(*node, NUMBER_DATA, value, 0);
+            }
+        }
+        if ((*node)->n_children == 2) 
+        {
+            node_t* child_a = (*node)->children[0];
+            node_t* child_b = (*node)->children[1];
+            if(child_a->type == NUMBER_DATA && child_b->type == NUMBER_DATA)
+            {
+                int64_t* value = (int64_t*)malloc(sizeof(int64_t));
+                int64_t a = *(int64_t*)(child_a->data);
+                int64_t b = *(int64_t*)(child_b->data);
+                switch (*(char*)(*node)->data)
+                {
+                case '+': *value =  a + b; break;
+                case '-': *value =  a - b; break;
+                case '*': *value =  a * b; break;
+                case '/': *value =  a / b; break;
+                case '|': *value =  a | b; break;
+                case '^': *value =  a ^ b; break;
+                case '&': *value =  a & b; break;
+                default:
+                    printf("DEFAULT should not be reached!");
+                    break;
+                }
+                node_finalize(child_a);
+                node_finalize(child_b);
+                node_finalize(*node);
+                *node = (node_t*)malloc(sizeof(node_t));
+                node_init(*node, NUMBER_DATA, value, 0);
+            }
+        }
+    }    
+}
