@@ -6,6 +6,7 @@ static void node_finalize ( node_t *discard );
 static void prune_children ( node_t **root );
 static void resolve_constant_expressions(node_t **root);
 static void flatten(node_t **root);
+static void flatten_inner(node_t **node);
 
 typedef struct stem_t *stem;
 struct stem_t { const char *str; stem next; };
@@ -33,7 +34,7 @@ simplify_syntax_tree ( void )
 }
 
 
-static void print_node(node_t node) 
+static void print_node(node_t node)
 {
     printf("%s(%p){children=%ld}[", node_string[node.type], node.data, node.n_children);
     for (uint64_t i = 0; i < node.n_children; i++)
@@ -41,7 +42,7 @@ static void print_node(node_t node)
         printf("%p", node.children[i]);
         if (i+1 < node.n_children)
             printf(", ");
-        
+
     }
     printf("]\n");
 }
@@ -77,7 +78,7 @@ node_init (node_t *nd, node_index_t type, void *data, uint64_t n_children, ...)
 
 
 static void
-tree_print(node_t* root, stem head) 
+tree_print(node_t* root, stem head)
 {
     static const char *sdown = " │", *slast = " └", *snone = "  ";
     struct stem_t col = {0, 0}, *tail;
@@ -87,13 +88,13 @@ tree_print(node_t* root, stem head)
         if (!tail->next) {
             if (!strcmp(sdown, tail->str))
                 printf(" ├");
-            else 
+            else
                 printf("%s", tail->str);
             break;
         }
         printf("%s", tail->str);
     }
-    
+
     if (root == NULL) {
         // Secure against null pointers sent as root
         printf("─(nil)\n");
@@ -102,17 +103,17 @@ tree_print(node_t* root, stem head)
     printf("─%s", node_string[root->type]);
     if ( root->type == IDENTIFIER_DATA ||
          root->type == STRING_DATA ||
-         root->type == EXPRESSION ) 
+         root->type == EXPRESSION )
         printf("(%s)", (char *) root->data);
     else if (root->type == NUMBER_DATA)
         printf("(%ld)", *((int64_t *)root->data));
     putchar('\n');
- 
+
     if (!root->n_children) return;
- 
+
     if (tail && tail->str == slast)
         tail->str = snone;
- 
+
     if (!tail)  tail = head = &col;
     else        tail->next = &col;
 
@@ -132,7 +133,7 @@ node_print ( node_t *root, int nesting )
         printf ( "%*c%s", nesting, ' ', node_string[root->type] );
         if ( root->type == IDENTIFIER_DATA ||
              root->type == STRING_DATA ||
-             root->type == EXPRESSION ) 
+             root->type == EXPRESSION )
             printf ( "(%s)", (char *) root->data );
         else if ( root->type == NUMBER_DATA )
             printf ( "(%ld)", *((int64_t *)root->data) );
@@ -152,13 +153,13 @@ node_finalize ( node_t *discard )
     {
         discard->type = 0;
         discard->n_children = 0;
-        
+
         // printf("freeing data %p\n", discard->data );
         free ( discard->data );
-        
+
         // printf("freeing children %p\n", discard->children );
         free ( discard->children );
-        
+
         // printf("freeing node %p\n", discard );
         free ( discard );
     }
@@ -181,15 +182,15 @@ destroy_subtree ( node_t *discard )
 static void
 simplify_tree ( node_t **simplified, node_t *root )
 {
-    /* TODO: Simplify the syntax tree structure 
-    1. prune children: Delete nodes which can only ever have 1 child and no 
+    /* TODO: Simplify the syntax tree structure
+    1. prune children: Delete nodes which can only ever have 1 child and no
     meaningful data, and associate their child directly with their parent.
 
-    2. resolve constant expressions: Compute the value of subtrees representing 
+    2. resolve constant expressions: Compute the value of subtrees representing
     arithmetic with constants, and replace them with their value.
 
-    3. flatten: Delete internal nodes of list structures, leaving only a parent 
-    node with a list type, and all list items as its children. Print list items 
+    3. flatten: Delete internal nodes of list structures, leaving only a parent
+    node with a list type, and all list items as its children. Print list items
     can be associated directly with the print statement.
 
     VARIABLE_LIST                           VARIABLE_LIST
@@ -219,7 +220,7 @@ simplify_tree ( node_t **simplified, node_t *root )
 
 
 static void
-prune_children( node_t **node )
+prune_children( node_t** node )
 {
     if (*node == NULL)
         return;
@@ -230,8 +231,8 @@ prune_children( node_t **node )
         node_finalize(*node);
         *node = child;
         prune_children(node);
-    } 
-    else 
+    }
+    else
     {
         for (uint64_t i = 0; i < (*node)->n_children; i++)
         {
@@ -251,7 +252,7 @@ static void resolve_constant_expressions(node_t **node)
 
     if ((*node)->type == EXPRESSION)
     {
-        if ((*node)->n_children == 1) 
+        if ((*node)->n_children == 1)
         {
             node_t* child_a = (*node)->children[0];
             if(child_a->type == NUMBER_DATA)
@@ -272,7 +273,7 @@ static void resolve_constant_expressions(node_t **node)
                 node_init(*node, NUMBER_DATA, value, 0);
             }
         }
-        if ((*node)->n_children == 2) 
+        else if ((*node)->n_children == 2)
         {
             node_t* child_a = (*node)->children[0];
             node_t* child_b = (*node)->children[1];
@@ -301,5 +302,57 @@ static void resolve_constant_expressions(node_t **node)
                 node_init(*node, NUMBER_DATA, value, 0);
             }
         }
-    }    
+    }
+}
+
+/*
+When we already are in a list node type, we don't want to keep checking node type
+*/
+static void flatten_inner(node_t **node)
+{
+    // ASSUMPTIONS: We have left fold lists, making every 0th (left) child a list
+    //              or a list element, and every 1th(right) child a list element
+    //            - No list post pruning will have a single child. The minimum is 2
+
+    if ((*node)->n_children == 0 || (*node)->children[0]->n_children == 0)
+        return;
+
+    assert((*node)->n_children == 2 && "Node can only ever have two children at this point");
+
+    // We want to start unraveling from the innermost part of the list, i.e. the start
+    flatten_inner(&(*node)->children[0]); 
+
+    uint64_t n_children = (*node)->n_children + (*node)->children[0]->n_children - 1;
+    node_t* right = (*node)->children[1];
+    node_t** left = (node_t**)realloc((*node)->children[0]->children, n_children * sizeof(node_t*));
+    if (left == NULL)
+        abort();
+
+    left[(*node)->children[0]->n_children] = right; // Append the 'right' element
+    node_finalize((*node)->children[0]);            //free left side child, right we will keep
+
+    // we're just about to overwrite this, we have grabbed the relevant pointers (right) out of it beforehand.
+    free((*node)->children); 
+    (*node)->children = left;
+    (*node)->n_children = n_children;
+}
+static void flatten(node_t **node)
+{
+    if (*node == NULL)
+        return;
+
+    switch ((*node)->type)
+    {
+    case GLOBAL_LIST:
+    case STATEMENT_LIST:
+    case PRINT_LIST:
+    case VARIABLE_LIST:
+    case ARGUMENT_LIST:
+    case PARAMETER_LIST:
+        flatten_inner(node);
+        break;
+
+    default:
+        break;
+    }
 }
