@@ -5,7 +5,6 @@ static void simplify_tree ( node_t **simplified, node_t *root );
 static void node_finalize ( node_t *discard );
 static void prune_children ( node_t **root );
 static void resolve_constant_expressions(node_t **root);
-static void flatten(node_t **root);
 
 typedef struct stem_t *stem;
 struct stem_t { const char *str; stem next; };
@@ -27,13 +26,11 @@ destroy_syntax_tree ( void )
 void
 simplify_syntax_tree ( void )
 {
-    printf("\nroot address before: %p\n", root);
     simplify_tree ( &root, root );
-    printf("\nroot address after: %p\n", root);
 }
 
 
-static void print_node(node_t node) 
+static void print_single_node(node_t node) 
 {
     printf("%s(%p){children=%ld}[", node_string[node.type], node.data, node.n_children);
     for (uint64_t i = 0; i < node.n_children; i++)
@@ -153,13 +150,10 @@ node_finalize ( node_t *discard )
         discard->type = 0;
         discard->n_children = 0;
         
-        // printf("freeing data %p\n", discard->data );
         free ( discard->data );
         
-        // printf("freeing children %p\n", discard->children );
         free ( discard->children );
         
-        // printf("freeing node %p\n", discard );
         free ( discard );
     }
 }
@@ -172,7 +166,6 @@ destroy_subtree ( node_t *discard )
     {
         for ( uint64_t i=0; i<discard->n_children; i++ )
             destroy_subtree ( discard->children[i] );
-        // printf("Destroying %p\n", discard);
         node_finalize ( discard );
     }
 }
@@ -213,7 +206,7 @@ simplify_tree ( node_t **simplified, node_t *root )
     */
     prune_children (&root);
     resolve_constant_expressions(&root);
-    flatten(&root);
+    //flatten(&root);
     *simplified = root;         // make data of simplified (node_t*) be root
 }
 
@@ -226,7 +219,6 @@ prune_children( node_t **node )
     if ((*node)->n_children == 1 && (*node)->data == NULL)
     {
         node_t* child = (*node)->children[0];
-        printf("PRUNING: %s -> %s\n", node_string[(*node)->type], node_string[child->type]);
         node_finalize(*node);
         *node = child;
         prune_children(node);
@@ -264,6 +256,7 @@ static void resolve_constant_expressions(node_t **node)
                 case '~': *value =  ~a; break;
                 default:
                     printf("DEFAULT should not be reached!");
+                    abort();
                     break;
                 }
                 node_finalize(child_a);
@@ -292,6 +285,7 @@ static void resolve_constant_expressions(node_t **node)
                 case '&': *value =  a & b; break;
                 default:
                     printf("DEFAULT should not be reached!");
+                    abort();
                     break;
                 }
                 node_finalize(child_a);
