@@ -1,0 +1,11 @@
+var global_var0, global_var1
+
+func my_func(param0, param1) begin
+    var a
+    return 0
+end
+
+func main() begin
+    var a
+    print "a string"
+end
