@@ -160,7 +160,7 @@ node_finalize ( node_t *discard )
         // printf("freeing children %p\n", discard->children );
         free ( discard->children );
 
-        // printf("freeing node %p\n", discard );
+        printf("freeing node %p\n", discard );
         free ( discard );
     }
 }
@@ -324,12 +324,15 @@ static void flatten_inner(node_t **node)
 
     uint64_t n_children = (*node)->n_children + (*node)->children[0]->n_children - 1;
     node_t* right = (*node)->children[1];
+    printf("alloc'd: %p\n", (*node)->children[0]->children);
     node_t** left = (node_t**)realloc((*node)->children[0]->children, n_children * sizeof(node_t*));
     if (left == NULL)
         abort();
+    
+    printf("realloc'd: %p\n", left);
 
     left[(*node)->children[0]->n_children] = right; // Append the 'right' element
-    node_finalize((*node)->children[0]);            //free left side child, right we will keep
+    //node_finalize((*node)->children[0]);            //free left side child, right we will keep
 
     // we're just about to overwrite this, we have grabbed the relevant pointers (right) out of it beforehand.
     free((*node)->children); 
@@ -338,6 +341,7 @@ static void flatten_inner(node_t **node)
 }
 static void flatten(node_t **node)
 {
+    // printf("%p\n", *node);
     if (*node == NULL)
         return;
 
@@ -348,11 +352,13 @@ static void flatten(node_t **node)
     case PRINT_LIST:
     case VARIABLE_LIST:
     case ARGUMENT_LIST:
+    case EXPRESSION_LIST:
     case PARAMETER_LIST:
         flatten_inner(node);
         break;
-
     default:
         break;
     }
+    for (uint64_t i = 0; i < (*node)->n_children; i++) 
+        flatten(&(*node)->children[i]);
 }
