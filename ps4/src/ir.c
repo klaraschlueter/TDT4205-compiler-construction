@@ -58,6 +58,12 @@ destroy_symbol_table ( void )
 
 void
 check_node_type (node_t* node, node_index_t expected_type) {
+    if (node == NULL)
+    {
+        printf("Node was null! Expected a node of type %s\n",
+                    node_string[expected_type]);
+        abort();
+    }
     if (node->type != expected_type)
     {
         printf("Wrong node type! Expected %s, got %s\n",
@@ -200,32 +206,36 @@ bind_names ( symbol_t* function )
     check_nchildren(node, 3);
 
     node_t* parameters = node->children[1];
-    check_node_type(parameters, VARIABLE_LIST);
-    if (function->nparams != parameters->n_children)
+    if (parameters != NULL) 
     {
-        printf("Number of parameters specified in given symbol table does not equal number of parameters in AST.\n");
-        abort();
+        check_node_type(parameters, VARIABLE_LIST);
+        if (function->nparams != parameters->n_children)
+        {
+            printf("Number of parameters specified in given symbol table does not equal number of parameters in AST.\n");
+            abort();
+        }
+        // Add all the parameters to function's locals
+        for (int i = 0; i < function->nparams; i++)
+        {
+            node_t* param = parameters->children[i];
+            check_node_type(param, IDENTIFIER_DATA);
+            char* key = param->data;
+    
+            // make symbol for parameter i
+            symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
+            *value = (symbol_t) {
+                .name = key,
+                .type = SYM_PARAMETER,
+                .node = param,
+                .seq = sequence_number++,
+                .nparams = 0,
+                .locals = NULL
+            };
+            print_symbol(value);
+            tlhash_insert( function->locals, key, strlen(key) + 1, value);
+        }
     }
-    // Add all the parameters to function's locals
-    for (int i = 0; i < function->nparams; i++)
-    {
-        node_t* param = parameters->children[i];
-        check_node_type(param, IDENTIFIER_DATA);
-        char* key = param->data;
-
-        // make symbol for parameter i
-        symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
-        *value = (symbol_t) {
-            .name = key,
-            .type = SYM_PARAMETER,
-            .node = param,
-            .seq = sequence_number++,
-            .nparams = 0,
-            .locals = NULL
-        };
-        print_symbol(value);
-        tlhash_insert( function->locals, key, strlen(key) + 1, value);
-    }
+    
     
     bind_subtree_names (function->locals, node->children[2]);
     
