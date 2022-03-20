@@ -35,12 +35,18 @@ void
 create_symbol_table ( void )
 {
     global_names = (tlhash_t*)malloc(sizeof(tlhash_t));
-    tlhash_init(global_names, 64);  // TODO: use the global list length for bucket size instead?
+    tlhash_init(global_names, 256);  // TODO: use the global list length for bucket size instead?
 
     find_globals(); 
 
     /* TODO: traverse the syntax tree and create the symbol table */
+    /*
+        nodes we need to react to:
+        Statement
+            
     
+    
+    */
 }
 
 
@@ -108,6 +114,43 @@ void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_tabl
     }
 }
 
+void fill_parameters_into_func_table(symbol_t* function)
+{
+    node_t* node = function->node;
+    check_node_type(node, FUNCTION);
+    check_nchildren(node, 3);
+
+    node_t* parameters = node->children[1];
+    if (parameters != NULL) 
+    {
+        check_node_type(parameters, VARIABLE_LIST);
+        if (function->nparams != parameters->n_children)
+        {
+            printf("Number of parameters specified in given symbol table does not equal number of parameters in AST.\n");
+            abort();
+        }
+        // Add all the parameters to function's locals
+        for (int i = 0; i < function->nparams; i++)
+        {
+            node_t* param = parameters->children[i];
+            check_node_type(param, IDENTIFIER_DATA);
+            char* key = param->data;
+    
+            // make symbol for parameter i
+            symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
+            *value = (symbol_t) {
+                .name = key,
+                .type = SYM_PARAMETER,
+                .node = param,
+                .seq = sequence_number++,
+                .nparams = 0,
+                .locals = NULL
+            };
+            tlhash_insert( function->locals, key, strlen(key) + 1, value);
+        }
+    }
+}
+
 void
 find_globals ( void )
 {
@@ -158,7 +201,7 @@ find_globals ( void )
             };
             tlhash_insert(global_names, key, strlen(key) + 1, value);
 
-            bind_names ( value );
+            fill_parameters_into_func_table ( value );
             break;
         default:
             printf("Global list contains a node of type %s, only declarations and functions are allowed!\n", node_string[child->type]);
@@ -201,43 +244,8 @@ void bind_subtree_names ( tlhash_t* local_names, node_t* root)
 void 
 bind_names ( symbol_t* function )
 {
-    node_t* node = function->node;
-    check_node_type(node, FUNCTION);
-    check_nchildren(node, 3);
 
-    node_t* parameters = node->children[1];
-    if (parameters != NULL) 
-    {
-        check_node_type(parameters, VARIABLE_LIST);
-        if (function->nparams != parameters->n_children)
-        {
-            printf("Number of parameters specified in given symbol table does not equal number of parameters in AST.\n");
-            abort();
-        }
-        // Add all the parameters to function's locals
-        for (int i = 0; i < function->nparams; i++)
-        {
-            node_t* param = parameters->children[i];
-            check_node_type(param, IDENTIFIER_DATA);
-            char* key = param->data;
-    
-            // make symbol for parameter i
-            symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
-            *value = (symbol_t) {
-                .name = key,
-                .type = SYM_PARAMETER,
-                .node = param,
-                .seq = sequence_number++,
-                .nparams = 0,
-                .locals = NULL
-            };
-            print_symbol(value);
-            tlhash_insert( function->locals, key, strlen(key) + 1, value);
-        }
-    }
-    
-    
-    bind_subtree_names (function->locals, node->children[2]);
+    //bind_subtree_names (function->locals, node->children[2]);
     
     
     /* TODO: Bind names and string literals in local symbol table */
