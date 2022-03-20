@@ -24,7 +24,7 @@ typedef struct s {
     symtype_t type;
     node_t *node;
     size_t seq;
-    size_t nparms;
+    size_t nparams;
     tlhash_t *locals;
 } symbol_t;
 #endif
