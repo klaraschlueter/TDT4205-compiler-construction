@@ -12,6 +12,9 @@ static void find_globals ( void );
  *  @param root Function's root node */
 static void bind_names ( symbol_t *function, node_t *root );
 
+// We start at 1, allowing us to use 0 as indicator for an undefined sequence number
+size_t sequence_number = 1;
+
 void
 create_symbol_table ( void )
 {
@@ -40,9 +43,6 @@ destroy_symbol_table ( void )
 void
 find_globals ( void )
 {
-    // We start at 1, allowing us to use 0 as indicator for an undefined sequence number
-    size_t sequence_number = 1;
-
     if (root->n_children > 1)
     {
         printf("Program has multiple children in AST, should only have one!\n");
