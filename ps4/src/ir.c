@@ -10,7 +10,7 @@ extern size_t n_string_list, stringc;
 static void find_globals ( void );
 /** @param function Function's symbol table entry
  *  @param root Function's root node */
-static void bind_names ( symbol_t *function, node_t *root );
+static void bind_names ( symbol_t *function );
 
 // We start at 1, allowing us to use 0 as indicator for an undefined sequence number
 size_t sequence_number = 1;
@@ -41,6 +41,51 @@ destroy_symbol_table ( void )
 }
 
 void
+check_node_type (node_t* node, node_index_t expected_type) {
+    if (node->type != expected_type)
+    {
+        printf("Wrong node type! Expected %s, got %s",
+                    node_string[expected_type], node_string[node->type]);
+        abort();
+    }
+}
+
+void
+check_nchildren (node_t* node, uint64_t expected_nchildren)
+{
+    if (node->n_children != expected_nchildren)
+    {
+        printf("Wrong number of children! Expected %ld, got %ld",
+                    expected_nchildren, node->n_children);
+        abort();
+    }
+}
+
+void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_table)
+{
+    check_node_type(declaration_node, DECLARATION);
+    check_nchildren(declaration_node, 1);
+    
+    node_t* var_list = declaration_node->children[0];
+            for (uint64_t i = 0; i < var_list->n_children; i++)
+            {
+                node_t* current_node = var_list->children[i];
+                char* key = current_node->data;
+
+                symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
+                *value = (symbol_t) {
+                    .type = SYM_GLOBAL_VAR,
+                    .node = current_node,   // Assuming we want to attach the symbol to the node that represents the variable, 
+                                            // and not the node that represents the variable list
+                    .seq = 0,               // Assuming we don't need this to be sequenced
+                    .nparams = 0,
+                    .locals = NULL
+                };
+                tlhash_insert(symbol_table, key, strlen(key) + 1, value);
+            }
+}
+
+void
 find_globals ( void )
 {
     if (root->n_children > 1)
@@ -68,23 +113,7 @@ find_globals ( void )
         switch (child->type)
         {
         case DECLARATION:;
-            node_t* var_list = child->children[0];
-            for (uint64_t j = 0; j < var_list->n_children; j++)
-            {
-                node_t* current_node = var_list->children[j];
-                char* key = current_node->data;
-
-                symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
-                *value = (symbol_t) {
-                    .type = SYM_GLOBAL_VAR,
-                    .node = current_node,   // Assuming we want to attach the symbol to the node that represents the variable, 
-                                            // and not the node that represents the variable list
-                    .seq = 0,               // Assuming we don't need this to be sequenced
-                    .nparams = 0,
-                    .locals = NULL
-                };
-                tlhash_insert(global_names, key, strlen(key) + 1, value);
-            }
+            declaration_into_sym_table(child, global_names);
             break;
         case FUNCTION:;
             char* key = child->children[0]->data;
@@ -100,7 +129,9 @@ find_globals ( void )
                     .nparams = nparams,
                     .locals = local_symbols
                 };
-                tlhash_insert(global_names, key, strlen(key) + 1, value);
+            tlhash_insert(global_names, key, strlen(key) + 1, value);
+
+            bind_names ( value );
             break;
         default:
             printf("Global list contains a node of type %s, only declarations and functions are allowed!\n", node_string[child->type]);
@@ -108,15 +139,78 @@ find_globals ( void )
             break;
         }
     }
-    
-
-
-    /* TODO: Populate symbol table with global variables and functions */
 }
 
+void bind_subtree_names ( tlhash_t* local_names, node_t* root)
+{
+    if (root == NULL)
+    {
+        return;
+    }
+    
+    // TODO turn this into a switch statement
+    if (root->type == DECLARATION)
+    {
+        //fill table
+        declaration_into_sym_table(root, local_names);
+        return;
+    }
+
+    if (root->type == BLOCK)
+    {
+        // TODO NEXT introduce a new scope (a new symbol table)
+        // How would we "attach" it?
+    }
+    if (root->n_children > 0)
+    {
+        // recursive call for all children
+        for (uint64_t i = 0; i < root->n_children; i++)
+        {
+            bind_subtree_names(local_names, root->children[i]);
+        }      
+    }
+}
 
 void 
-bind_names ( symbol_t *function, node_t *root )
+bind_names ( symbol_t* function )
 {
+    node_t* node = function->node;
+    check_node_type(node, FUNCTION);
+    check_nchildren(node, 3);
+
+    node_t* parameters = node->children[1];
+    check_node_type(parameters, VARIABLE_LIST);
+    if (function->nparams != parameters->n_children)
+    {
+        printf("Number of parameters specified in given symbol table does not equal number of parameters in AST.");
+        abort();
+    }
+    // Add all the parameters to function's locals
+    for (int i = 0; i < function->nparams; i++)
+    {
+        node_t* param = parameters->children[i];
+        check_node_type(param, IDENTIFIER_DATA);
+        char* key = param->data;
+
+        // make symbol for parameter i
+        symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
+            *value = (symbol_t) {
+                    .type = SYM_PARAMETER,
+                    .node = param,
+                    .seq = sequence_number++,
+                    .nparams = 0,
+                    .locals = NULL
+                };
+
+        printf("Function Locals: %p", function->locals);
+        printf("Local table insert key: %p", key);
+
+        tlhash_insert( function->locals, key, strlen(key) + 1, value);
+    }
+    
+    bind_subtree_names (function->locals, node->children[2]);
+    
+    
     /* TODO: Bind names and string literals in local symbol table */
+    // TODO: why are String literals named separately?
 }
