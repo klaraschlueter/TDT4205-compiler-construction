@@ -11,9 +11,25 @@ static void find_globals ( void );
 /** @param function Function's symbol table entry
  *  @param root Function's root node */
 static void bind_names ( symbol_t *function );
+static void print_symbol( symbol_t* symbol );
 
 // We start at 1, allowing us to use 0 as indicator for an undefined sequence number
 size_t sequence_number = 1;
+
+void 
+print_symbol(symbol_t* symbol) 
+{
+    char* symbol_type_names[] = {
+        "SYM_GLOBAL_VAR", "SYM_FUNCTION", 
+        "SYM_PARAMETER", "SYM_LOCAL_VAR"
+    };
+    printf("Name:               %s\n", symbol->name);
+    printf("Type:               %s\n", symbol_type_names[symbol->type]);
+    printf("Bound Node:         %p\n", symbol->node);
+    printf("Sequence number:    %zu\n", symbol->seq);
+    printf("#params:            %zu\n", symbol->nparams);
+    printf("Locals:             %p\n", symbol->locals);
+}
 
 void
 create_symbol_table ( void )
@@ -74,6 +90,7 @@ void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_tabl
 
                 symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
                 *value = (symbol_t) {
+                    .name = key,
                     .type = SYM_GLOBAL_VAR,
                     .node = current_node,   // Assuming we want to attach the symbol to the node that represents the variable, 
                                             // and not the node that represents the variable list
@@ -123,6 +140,7 @@ find_globals ( void )
 
             symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
             *value = (symbol_t) {
+                    .name = key,
                     .type = SYM_FUNCTION,
                     .node = child,
                     .seq = sequence_number++,               // Assuming we don't need this to be sequenced
@@ -194,17 +212,15 @@ bind_names ( symbol_t* function )
 
         // make symbol for parameter i
         symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
-            *value = (symbol_t) {
-                    .type = SYM_PARAMETER,
-                    .node = param,
-                    .seq = sequence_number++,
-                    .nparams = 0,
-                    .locals = NULL
-                };
-
-        printf("Function Locals: %p", function->locals);
-        printf("Local table insert key: %p", key);
-
+        *value = (symbol_t) {
+            .name = key,
+            .type = SYM_PARAMETER,
+            .node = param,
+            .seq = sequence_number++,
+            .nparams = 0,
+            .locals = NULL
+        };
+        print_symbol(value);
         tlhash_insert( function->locals, key, strlen(key) + 1, value);
     }
     
