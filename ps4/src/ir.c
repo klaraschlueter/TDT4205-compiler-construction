@@ -43,9 +43,6 @@ create_symbol_table ( void )
     /*
         nodes we need to react to:
         Statement
-            
-    
-    
     */
 }
 
@@ -202,6 +199,11 @@ find_globals ( void )
             tlhash_insert(global_names, key, strlen(key) + 1, value);
 
             fill_parameters_into_func_table ( value );
+
+            // TODO: Multi-blocked function body may contain multiple scopes
+
+            bind_names(value);
+
             break;
         default:
             printf("Global list contains a node of type %s, only declarations and functions are allowed!\n", node_string[child->type]);
@@ -218,12 +220,31 @@ void bind_subtree_names ( tlhash_t* local_names, node_t* root)
         return;
     }
     
-    // TODO turn this into a switch statement
-    if (root->type == DECLARATION)
+    switch (root->type)
     {
+    case DECLARATION:;
         //fill table
         declaration_into_sym_table(root, local_names);
         return;
+        break;
+        
+    case BLOCK:;
+        /* code */
+        break;
+    
+    case IDENTIFIER_DATA:
+        if (tlhash_lookup(local_names, root->data, strlen(root->data) + 1, (void**) &root->entry) != TLHASH_SUCCESS) {
+            // The identifier was not found in local names, try global names:
+            if (tlhash_lookup(global_names, root->data, strlen(root->data) + 1, (void**) &root->entry) != TLHASH_SUCCESS) {
+                // TODO: elegantly fail
+                printf("Identifier \"%s\" not found in local or global scope!\n", (char*)root->data);
+                abort();
+            }
+        }        
+        break;
+
+    default:
+        break;
     }
 
     if (root->type == BLOCK)
@@ -244,9 +265,8 @@ void bind_subtree_names ( tlhash_t* local_names, node_t* root)
 void 
 bind_names ( symbol_t* function )
 {
-
-    //bind_subtree_names (function->locals, node->children[2]);
-    
+    node_t* function_body = function->node->children[2];
+    bind_subtree_names (function->locals, function_body);
     
     /* TODO: Bind names and string literals in local symbol table */
     // TODO: why are String literals named separately?
