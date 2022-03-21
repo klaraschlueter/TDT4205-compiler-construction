@@ -86,7 +86,7 @@ check_nchildren (node_t* node, uint64_t expected_nchildren)
     }
 }
 
-void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_table)
+void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_table, bool isLocal)
 {
     check_node_type(declaration_node, DECLARATION);
     check_nchildren(declaration_node, 1);
@@ -100,7 +100,7 @@ void declaration_into_sym_table (node_t* declaration_node, tlhash_t* symbol_tabl
         symbol_t* value = (symbol_t*)malloc(sizeof(symbol_t));
         *value = (symbol_t) {
             .name = key,
-            .type = SYM_GLOBAL_VAR,
+            .type = isLocal ? SYM_LOCAL_VAR : SYM_GLOBAL_VAR,
             .node = current_node,   // Assuming we want to attach the symbol to the node that represents the variable, 
                                     // and not the node that represents the variable list
             .seq = 0,               // Assuming we don't need this to be sequenced
@@ -176,7 +176,7 @@ find_globals ( void )
         switch (child->type)
         {
         case DECLARATION:;
-            declaration_into_sym_table(child, global_names);
+            declaration_into_sym_table(child, global_names, false);
             break;
         case FUNCTION:;
             char* key = child->children[0]->data;
@@ -224,7 +224,7 @@ void bind_subtree_names ( tlhash_t* local_names, node_t* root)
     {
     case DECLARATION:;
         //fill table
-        declaration_into_sym_table(root, local_names);
+        declaration_into_sym_table(root, local_names, true);
         return;
         break;
         
@@ -241,6 +241,7 @@ void bind_subtree_names ( tlhash_t* local_names, node_t* root)
                 abort();
             }
         }        
+        print_symbol(root->entry);
         break;
 
     default:
