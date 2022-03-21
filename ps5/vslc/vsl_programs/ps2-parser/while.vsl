@@ -1,0 +1,11 @@
+// check parsing of do-while loop
+
+func main()
+begin   
+    var i
+    i := 2
+    while i < 42 do
+        i := i * i
+    print i
+    return 0
+end
