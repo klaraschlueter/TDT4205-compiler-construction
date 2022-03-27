@@ -11,3 +11,6 @@
 */src/scanner.c
 */src/parser.c
 */src/y.tab.h
+
+# ignore ouput of ps5
+ps5/green_bottles
