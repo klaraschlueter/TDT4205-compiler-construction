@@ -65,11 +65,13 @@ generate_global_variables ( void )
     puts(".align 8");
     
     size_t size = tlhash_size(global_names);
-    char** keys = (char**)malloc(size*sizeof(char*));
-    tlhash_keys(global_names, (void**) keys);
-    for (int i = 0; i < size; i++)
+    symbol_t *symbols[size];
+    tlhash_values(global_names, (void**) &symbols);
+    for (size_t i = 0; i < size; i++)
     {
-        printf(".%s:\n", keys[i]);
+        if (symbols[i]->type == SYM_GLOBAL_VAR) {
+            printf(".%s:\n", symbols[i]->name);
+        }
     }
 }
 
