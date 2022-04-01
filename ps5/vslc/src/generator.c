@@ -33,6 +33,7 @@ generate_program ( void )
     // - Generate string table
     generate_stringtable();
     // - Declare global variables
+    generate_global_variables();
     // - Generate code for all functions
     // - Generate main (function already implemented) by assigning either the
     //   function named main or the first function of the source file if no 
@@ -50,7 +51,6 @@ generate_stringtable ( void )
 	puts(".strout:\t.asciz \"\%s \"");
 	puts(".errout:\t.asciz \"Wrong number of arguments\"");
 
-    // TODO: Implement the rest
     for (size_t i = 0; i < stringc; i++)
     {
         printf(".str%04zu:\t.asciz %s\n", i, string_list[i]);
@@ -61,7 +61,16 @@ generate_stringtable ( void )
 void
 generate_global_variables ( void )
 {
-    // TODO: Create a .bss section and declare global variables
+    puts(".bss");
+    puts(".align 8");
+    
+    size_t size = tlhash_size(global_names);
+    char** keys = (char**)malloc(size*sizeof(char*));
+    tlhash_keys(global_names, (void**) keys);
+    for (int i = 0; i < size; i++)
+    {
+        printf(".%s:\n", keys[i]);
+    }
 }
 
 void
