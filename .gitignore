@@ -8,9 +8,12 @@
 */src/vslc
 
 # ignore generated code from yacc and lex
-*/src/scanner.c
-*/src/parser.c
-*/src/y.tab.h
+**/src/scanner.c
+**/src/parser.c
+**/src/y.tab.h
 
 # ignore ouput of ps5
 ps5/green_bottles
+
+# ignore vim swp files
+*.swp
