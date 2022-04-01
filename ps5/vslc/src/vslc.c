@@ -18,6 +18,7 @@ bool
     print_full_tree = false,
     print_simplified_tree = false,
     print_symbol_table_contents = false,
+    print_strings = false,
     print_generated_program = true,
     new_print_style = true;
 
@@ -43,6 +44,9 @@ main ( int argc, char **argv )
     if ( print_generated_program )
         generate_program ();    // In generator.c
 
+    if ( print_strings )
+        print_string_table();
+
 
     destroy_syntax_tree ();     // In tree.c
     destroy_symbol_table ();    // In ir.c
@@ -56,14 +60,15 @@ static const char *usage =
 "\t-T\tOutput the simplified syntax tree\n"
 "\t-s\tOutput the symbol table contents\n"
 "\t-q\tQuiet: suppress output from the code generator\n"
-"\t-u\tDo not use print style more like the tree command\n";
+"\t-u\tDo not use print style more like the tree command\n"
+"\t-y\tOutput the string table contents\n";
 
 
 static void
 options ( int argc, char **argv )
 {
     int o;
-    while ( (o=getopt(argc,argv,"htTsqu")) != -1 )
+    while ( (o=getopt(argc,argv,"htTsquy")) != -1 )
     {
         switch ( o )
         {
@@ -76,6 +81,7 @@ options ( int argc, char **argv )
             case 's':   print_symbol_table_contents = true; break;
             case 'q':   print_generated_program = false;    break;
             case 'u':   new_print_style = false;            break;
+            case 'y':   print_strings = true;               break;
         }
     }
 }

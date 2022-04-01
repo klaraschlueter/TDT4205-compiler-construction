@@ -39,6 +39,7 @@ extern size_t stringc;          // Defined in ir.c, used by generator.c
 /* Global routines, called from main in vslc.c */
 void simplify_syntax_tree ( void );
 void print_syntax_tree ( void );
+void print_string_table ( void );
 void destroy_syntax_tree ( void );
 
 void create_symbol_table ( void );

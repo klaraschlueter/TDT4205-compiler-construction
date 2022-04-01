@@ -31,6 +31,7 @@ generate_program ( void )
 
     // TODO: Implement
     // - Generate string table
+    generate_stringtable();
     // - Declare global variables
     // - Generate code for all functions
     // - Generate main (function already implemented) by assigning either the
@@ -50,6 +51,11 @@ generate_stringtable ( void )
 	puts(".errout:\t.asciz \"Wrong number of arguments\"");
 
     // TODO: Implement the rest
+    for (size_t i = 0; i < stringc; i++)
+    {
+        printf(".str%04zu:\t.asciz %s\n", i, string_list[i]);
+    }
+    
 }
 
 void

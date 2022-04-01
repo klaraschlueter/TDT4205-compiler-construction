@@ -37,6 +37,15 @@ print_symbol_table ( void )
     print_symbols ( global_names );
 }
 
+void
+print_string_table ( void )
+{
+    for (size_t i = 0; i < stringc; i++)
+    {
+        printf("%zu: %s\n", i, string_list[i]);
+    }
+}
+
 
 void
 destroy_symbol_table ( void )
