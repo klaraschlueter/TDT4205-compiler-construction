@@ -29,15 +29,43 @@ generate_program ( void )
      * for the function symbol it is given as argument.
      */
 
+    
+    symbol_t* globals[global_names->size];
+    tlhash_values(global_names, (void**) &globals);
+
     // TODO: Implement
     // - Generate string table
     generate_stringtable();
     // - Declare global variables
     generate_global_variables();
+
+    
+    puts(".text");
     // - Generate code for all functions
+    
+    for (size_t i = 0; i < global_names->size; i++)
+    {
+        if (globals[i]->type == SYM_FUNCTION) {
+            generate_function(globals[i]);
+        }
+    }
+    
     // - Generate main (function already implemented) by assigning either the
     //   function named main or the first function of the source file if no 
     //   main exists.
+    
+    symbol_t* main = NULL;
+    if (tlhash_lookup(global_names, "main", 4, (void**) &main) != TLHASH_SUCCESS)
+    {
+        // Assign the function appearing first in our program:
+        for (size_t i = 0; i < global_names->size; i++)
+        {
+            if (globals[i]->type == SYM_FUNCTION && globals[i]->seq == 0) {
+                main = globals[i];
+            }
+        }
+    }
+    generate_main(main);
 }
 
 void
@@ -55,7 +83,6 @@ generate_stringtable ( void )
     {
         printf(".str%04zu:\t.asciz %s\n", i, string_list[i]);
     }
-    
 }
 
 void
@@ -63,14 +90,12 @@ generate_global_variables ( void )
 {
     puts(".bss");
     puts(".align 8");
-    
-    size_t size = tlhash_size(global_names);
-    symbol_t *symbols[size];
-    tlhash_values(global_names, (void**) &symbols);
-    for (size_t i = 0; i < size; i++)
+    symbol_t* globals[global_names->size];
+    tlhash_values(global_names, (void**) &globals);
+    for (size_t i = 0; i < global_names->size; i++)
     {
-        if (symbols[i]->type == SYM_GLOBAL_VAR) {
-            printf(".%s:\n", symbols[i]->name);
+        if (globals[i]->type == SYM_GLOBAL_VAR) {
+            printf(".%s:\n", globals[i]->name);
         }
     }
 }
@@ -78,7 +103,32 @@ generate_global_variables ( void )
 void
 generate_function ( symbol_t *function )
 {
-    // TODO: Generate code for declaring and entering function, then generate its body
+    size_t num_params = function->nparms;
+    size_t num_locals_vars = (function->locals->size - num_params);
+
+    printf(".globl _%s\n", function->name);
+    printf("_%s:\n", function->name);
+    // Function prologue -> setup stack frame
+    puts("\tpushq   %rbp");
+    puts("\tmovq    %rsp, %rbp");
+
+    // save aside parameter values passed in the registers (the rest [if any] come served on the stack already)
+    for (int i = 0; i < MIN(num_params, 6); i++) 
+    {
+        printf("\tpushq %s\n", record[i]);
+    }
+    
+    // allocate space for local variables
+    if (num_locals_vars > 0)
+        printf("\tsubq $%zu, %%rsp\n", 8 * num_locals_vars);
+    
+    // ensure stack size is 16byte-aligned
+    if (function->locals->size % 2 == 1)
+        puts("\tpushq $0");
+
+    // Function epilogue -> tear down stack frame
+    puts("\tleave");
+    puts("\tret");
 }
 
 void
@@ -96,14 +146,20 @@ generate_main ( symbol_t *first )
     puts ( ".globl main" );
     puts ( ".section .text" );
     puts ( "main:" );
+
+    //prologue
     puts ( "\tpushq   %rbp" );
     puts ( "\tmovq    %rsp, %rbp" );
 
+    // if main is called with the wrong number of arguments, abort and print error message, assumes first argument holds number of arguments?
     printf ( "\tsubq\t$1,%%rdi\n" );
     printf ( "\tcmpq\t$%zu,%%rdi\n", first->nparms );
-    printf ( "\tjne\tABORT\n" );
-    printf ( "\tcmpq\t$0,%%rdi\n" );
+    printf ( "\tjne\tABORT\n" );        
+
+    // if main is called with no arguments (other than number of arguments?), skip past the argument parsing
+    printf ( "\tcmpq\t$0,%%rdi\n" );    
     printf ( "\tjz\tSKIP_ARGS\n" );
+
 
     printf ( "\tmovq\t%%rdi,%%rcx\n" );
     printf ( "\taddq $%zu, %%rsi\n", 8*first->nparms );
