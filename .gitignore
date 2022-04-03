@@ -1,11 +1,11 @@
 # Ignore vscode settings and project files
-*/.vscode/*
+**/.vscode/*
 
 # ignore C compilation output binaries
 *.o
 
 # ignore the generated compiler
-*/src/vslc
+**/src/vslc
 
 # ignore generated code from yacc and lex
 **/src/scanner.c
