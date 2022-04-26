@@ -431,8 +431,43 @@ generate_if_statement ( node_t *statement )
 static void
 generate_while_statement ( node_t *statement )
 {
-    // TODO: Handle while statement
-    // statement->nodetype = WHILE_STATEMENT
+    size_t statement_num = label_num;
+    label_num += 1;
+    
+    printf(".WHILE%ld:\n", statement_num);
+
+    // CONDITION and JUMP
+    node_t* relation = statement->children[0];
+    generate_expression(relation->children[0]); //lhs
+    puts("\tpushq\t%rax");                      //lhs -> stack top
+    generate_expression(relation->children[1]); //rhs -> rax
+
+    puts("\tcmpq\t%rax, (%rsp)");
+    printf ( "\tpopq\t%%rax\n" );
+    switch ( *((char*)relation->data) )
+    {
+        case '=':;
+            printf("\tjnz\t\t");
+            break;
+        case '<':;
+            printf("\tjge\t\t");
+            break;
+        case '>':;
+            printf("\tjle\t\t");
+            break;
+        default:
+            printf("YOU SHOULD NOT BE HERE!\n");
+            abort();
+            break;
+    }
+    printf(".ENDWHILE%ld\n", statement_num); // this line specifies where the previous jump goes and is the same for all cases.
+
+    // WHILE BLOCK
+    generate_node( statement->children[1] );
+    printf("\tjmp\t\t.WHILE%ld\n", statement_num);
+
+    // ENDWHILE LABEL
+    printf(".ENDWHILE%ld:\n", statement_num);
 }
 
 
@@ -460,7 +495,7 @@ generate_node ( node_t *node )
             generate_if_statement( node );
             break;
         case WHILE_STATEMENT:
-            // TODO: Implement
+            generate_while_statement( node );
             break;
         case NULL_STATEMENT:
             // TODO: Implement
