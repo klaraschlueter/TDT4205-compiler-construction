@@ -380,11 +380,10 @@ generate_if_statement ( node_t *statement )
 {
     size_t statement_num = label_num;
     label_num += 1;
+
     node_t* relation = statement->children[0];
 
-
     // IF
-    printf(".IF%ld:\n", statement_num);
     generate_expression(relation->children[0]); //lhs
     puts("\tpushq\t%rax");                      //lhs -> stack top
     generate_expression(relation->children[1]); //rhs -> rax
@@ -395,21 +394,17 @@ generate_if_statement ( node_t *statement )
         label = ".ELSE%ld\n";
     }
 
+    puts("\tcmpq\t%rax, (%rsp)");
+    printf ( "\tpopq\t%%rax\n" );
     switch ( *((char*)relation->data) )
     {
         case '=':;
-            puts("\tcmpq\t%rax, (%rsp)");
-            printf ( "\tpopq\t%%rax\n" );
             printf("\tjnz\t\t");
             break;
         case '<':;
-            puts("\tcmpq\t(%rsp), %rax");
-            printf ( "\tpopq\t%%rax\n" );
-            printf("\tjle\t\t");
+            printf("\tjge\t\t");
             break;
         case '>':;
-            puts("\tcmpq\t%rax, (%rsp)");
-            printf ( "\tpopq\t%%rax\n" );
             printf("\tjle\t\t");
             break;
         default:
@@ -417,10 +412,9 @@ generate_if_statement ( node_t *statement )
             abort();
             break;
     }
-    printf(label, statement_num);
+    printf(label, statement_num); // This statement specifies where the jump written in the switch statement goes (is there an else?).
 
     // THEN
-    printf(".THEN%ld:\n", statement_num);
     generate_node( statement->children[1] );
     printf("\tjmp\t\t.ENDIF%ld\n", statement_num);
 
@@ -464,7 +458,6 @@ generate_node ( node_t *node )
             break;
         case IF_STATEMENT:
             generate_if_statement( node );
-            // TODO: Implement
             break;
         case WHILE_STATEMENT:
             // TODO: Implement
