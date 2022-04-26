@@ -1,0 +1,30 @@
+// This program tests activation records, function call and return
+func funcall ()
+begin
+    var x,y,z
+    x := 5
+    y := 10
+    print "Calling my_function with parameters", x, y
+    z := my_function ( x, y )
+    print "The returned result is", z
+    z := my_other_function ()
+    print "The other returned result is", z
+    return 0
+end
+
+func my_function ( s, t )
+begin
+    var u
+    u := s*s + t*t
+    print "Parameter s is", s
+    print "Parameter t is", t
+    print "The sum of their squares is", u
+    return u
+end
+
+func my_other_function ()
+begin
+    var x
+    x := 42
+    return x
+end

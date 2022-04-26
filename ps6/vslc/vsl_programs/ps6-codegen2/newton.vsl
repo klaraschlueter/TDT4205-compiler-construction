@@ -1,0 +1,21 @@
+// Approximate square root by the Newton/Raphson method for f(x) = x^2 - n
+// f(x) = x^2 - n = 0
+// f'(x) = 2x
+// x{n+1} = x{n} - (x^2-n) / 2x 
+
+func newton ( n )
+begin
+    print "The square root of", n, "is", improve ( n, 1 )
+    return 0
+end
+
+func improve ( n, estimate )
+begin
+    var next
+    next := estimate - ( (estimate * estimate - n) / ( 2 * estimate ) )
+    if next - estimate = 0 then
+        // Integer precision converges at smallest int greater than the square
+        return next-1
+    else
+        return improve ( n, next )
+end

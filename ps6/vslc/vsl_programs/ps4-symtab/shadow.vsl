@@ -1,0 +1,24 @@
+
+func main() begin
+    var a, b
+    a := 1
+    begin
+        var a
+        a := 2
+        b := 40
+        begin
+            var a
+            a := b + 2
+            print a, b
+        end
+        print a
+        begin
+            var b
+            b := 38
+            a := b + 3
+            print a, b
+        end
+        print a
+    end
+    print b
+end
