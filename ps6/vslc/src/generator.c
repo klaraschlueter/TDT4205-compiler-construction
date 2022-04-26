@@ -15,6 +15,7 @@ static const char *record[6] = {
 };
 
 static symbol_t *current_function = NULL;
+static size_t label_num = 0;
 
 
 void
@@ -374,12 +375,62 @@ generate_print_statement ( node_t *statement )
     puts ( "\tcall\tputchar" );
 }
 
-
 static void
 generate_if_statement ( node_t *statement )
 {
-    // TODO: Handle if statement
-    // statement->nodetype = IF_STATEMENT
+    size_t statement_num = label_num;
+    label_num += 1;
+    node_t* relation = statement->children[0];
+
+
+    // IF
+    printf(".IF%ld:\n", statement_num);
+    generate_expression(relation->children[0]); //lhs
+    puts("\tpushq\t%rax");                      //lhs -> stack top
+    generate_expression(relation->children[1]); //rhs -> rax
+
+    char* label = ".ENDIF%ld\n";
+    if (statement->n_children == 3) 
+    {
+        label = ".ELSE%ld\n";
+    }
+
+    switch ( *((char*)relation->data) )
+    {
+        case '=':;
+            puts("\tcmpq\t%rax, (%rsp)");
+            printf ( "\tpopq\t%%rax\n" );
+            printf("\tjnz\t\t");
+            break;
+        case '<':;
+            puts("\tcmpq\t(%rsp), %rax");
+            printf ( "\tpopq\t%%rax\n" );
+            printf("\tjle\t\t");
+            break;
+        case '>':;
+            puts("\tcmpq\t%rax, (%rsp)");
+            printf ( "\tpopq\t%%rax\n" );
+            printf("\tjle\t\t");
+            break;
+        default:
+            printf("YOU SHOULD NOT BE HERE!\n");
+            abort();
+            break;
+    }
+    printf(label, statement_num);
+
+    // THEN
+    printf(".THEN%ld:\n", statement_num);
+    generate_node( statement->children[1] );
+    printf("\tjmp\t\t.ENDIF%ld\n", statement_num);
+
+    // ELSE
+    if (statement->n_children == 3)
+    {
+        printf(".ELSE%ld:\n", statement_num);
+        generate_node(statement->children[2]);
+    }
+    printf(".ENDIF%ld:\n", statement_num);
 }
 
 
@@ -412,6 +463,7 @@ generate_node ( node_t *node )
             printf ( "\tret\n" );
             break;
         case IF_STATEMENT:
+            generate_if_statement( node );
             // TODO: Implement
             break;
         case WHILE_STATEMENT:
