@@ -16,6 +16,7 @@ static const char *record[6] = {
 
 static symbol_t *current_function = NULL;
 static size_t label_num = 0;
+static size_t current_while_label_num = 0;
 
 
 void
@@ -433,6 +434,7 @@ generate_while_statement ( node_t *statement )
 {
     size_t statement_num = label_num;
     label_num += 1;
+    current_while_label_num = statement_num;
     
     printf(".WHILE%ld:\n", statement_num);
 
@@ -468,6 +470,8 @@ generate_while_statement ( node_t *statement )
 
     // ENDWHILE LABEL
     printf(".ENDWHILE%ld:\n", statement_num);
+
+    current_while_label_num -= 1;
 }
 
 
@@ -498,7 +502,7 @@ generate_node ( node_t *node )
             generate_while_statement( node );
             break;
         case NULL_STATEMENT:
-            // TODO: Implement
+            printf("\tjmp\t\t.WHILE%ld\n", current_while_label_num);
             break;
         default:
             for ( size_t i=0; i<node->n_children; i++ )
